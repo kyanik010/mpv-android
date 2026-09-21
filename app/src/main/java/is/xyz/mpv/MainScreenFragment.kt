@@ -12,6 +12,7 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
 import java.net.URLEncoder
+import java.io.IOException
 import java.util.concurrent.Executors
 
 class MainScreenFragment : Fragment(R.layout.fragment_main_screen) {
@@ -64,10 +65,12 @@ class MainScreenFragment : Fragment(R.layout.fragment_main_screen) {
                 val p = URLEncoder.encode(password, "UTF-8")
                 val apiUrl = "$normalizedServer/player_api.php?username=$u&password=$p"
                 val connection = URL(apiUrl).openConnection() as HttpURLConnection
-                connection.connectTimeout = 10000
-                connection.readTimeout = 10000
+                connection.connectTimeout = 15000
+                connection.readTimeout = 15000
+                connection.instanceFollowRedirects = true
                 connection.requestMethod = "GET"
                 connection.setRequestProperty("Accept", "application/json")
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Android) AudioMixIPTV")
                 val code = connection.responseCode
                 if (code in 200..299) {
                     val body = connection.inputStream.bufferedReader().use { it.readText() }
@@ -101,7 +104,10 @@ class MainScreenFragment : Fragment(R.layout.fragment_main_screen) {
             val uri = URI(if (server.contains("://")) server else "http://$server")
             val scheme = uri.scheme?.lowercase() ?: return null
             if (scheme != "http" && scheme != "https" || uri.host.isNullOrBlank()) return null
-            URI(scheme, uri.userInfo, uri.host, uri.port, uri.path?.trimEnd('/'), null, null).toString().trimEnd('/')
+            var path = uri.path.orEmpty().trimEnd('/')
+            if (path.endsWith("/player_api.php", ignoreCase = true)) path = path.removeSuffix("/player_api.php")
+            if (path.endsWith("/panel_api.php", ignoreCase = true)) path = path.removeSuffix("/panel_api.php")
+            URI(scheme, uri.userInfo, uri.host, uri.port, path.ifBlank { null }, null, null).toString().trimEnd('/')
         } catch (_: Exception) {
             null
         }

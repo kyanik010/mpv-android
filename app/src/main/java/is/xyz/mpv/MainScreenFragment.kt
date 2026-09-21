@@ -1,216 +1,131 @@
 package `is`.xyz.mpv
 
-import `is`.xyz.filepicker.DocumentPickerFragment
-import `is`.xyz.mpv.preferences.PreferenceActivity
 import `is`.xyz.mpv.databinding.FragmentMainScreenBinding
-import android.app.Activity
-import android.content.ActivityNotFoundException
-import android.content.Intent
-import android.content.res.Configuration
-import android.net.Uri
 import android.os.Bundle
 import android.preference.PreferenceManager
-import android.util.Log
 import android.view.View
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
+import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URI
+import java.net.URL
+import java.net.URLEncoder
+import java.util.concurrent.Executors
 
 class MainScreenFragment : Fragment(R.layout.fragment_main_screen) {
     private lateinit var binding: FragmentMainScreenBinding
-
-    private lateinit var documentTreeOpener: ActivityResultLauncher<Uri?>
-    private lateinit var filePickerLauncher: ActivityResultLauncher<Intent>
-    private lateinit var playerLauncher: ActivityResultLauncher<Intent>
-
-    private var firstRun = false
-    private var returningFromPlayer = false
-
-    private var prev = ""
-    private var prevData: String? = null
-    private var lastPath = ""
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        firstRun = savedInstanceState == null
-
-        documentTreeOpener = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) {
-            it?.let { root ->
-                requireContext().contentResolver.takePersistableUriPermission(
-                    root, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                saveChoice("doc", root.toString())
-
-                val i = Intent(context, FilePickerActivity::class.java)
-                i.putExtra("skip", FilePickerActivity.DOC_PICKER)
-                i.putExtra("root", root.toString())
-                filePickerLauncher.launch(i)
-            }
-        }
-        filePickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-            if (it.resultCode != Activity.RESULT_OK) {
-                return@registerForActivityResult
-            }
-            it.data?.getStringExtra("last_path")?.let { path ->
-                lastPath = path
-            }
-            it.data?.getStringExtra("path")?.let { path ->
-                playFile(path)
-            }
-        }
-        playerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-            // we don't care about the result but remember that we've been here
-            returningFromPlayer = true
-            Log.v(TAG, "returned from player ($it)")
-        }
-    }
+    private val executor = Executors.newSingleThreadExecutor()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
         binding = FragmentMainScreenBinding.bind(view)
-
         Utils.handleInsetsAsPadding(binding.root)
-
-        binding.docBtn.setOnClickListener {
-            try {
-                documentTreeOpener.launch(null)
-            } catch (e: ActivityNotFoundException) {
-                // Android TV doesn't come with a document picker and certain versions just throw
-                // instead of handling this gracefully
-                binding.docBtn.isEnabled = false
-            }
-        }
-        binding.urlBtn.setOnClickListener {
-            saveChoice("url")
-            val helper = Utils.OpenUrlDialog(requireContext())
-            with (helper) {
-                builder.setPositiveButton(R.string.dialog_ok) { _, _ ->
-                    playFile(helper.text)
-                }
-                builder.setNegativeButton(R.string.dialog_cancel) { dialog, _ -> dialog.cancel() }
-                create().show()
-            }
-        }
-        binding.filepickerBtn.setOnClickListener {
-            saveChoice("file")
-            val i = Intent(context, FilePickerActivity::class.java)
-            i.putExtra("skip", FilePickerActivity.FILE_PICKER)
-            if (lastPath != "")
-                i.putExtra("default_path", lastPath)
-            filePickerLauncher.launch(i)
-        }
-        binding.settingsBtn.setOnClickListener {
-            saveChoice("") // will reset
-            startActivity(Intent(context, PreferenceActivity::class.java))
-        }
-
-        if (BuildConfig.DEBUG) {
-            binding.settingsBtn.setOnLongClickListener { showDebugMenu(); true }
-        }
-
-        onConfigurationChanged(view.resources.configuration)
+        loadSavedLogin()
+        binding.loginBtn.setOnClickListener { loginXtream() }
     }
 
-    private fun showDebugMenu() {
-        assert(BuildConfig.DEBUG)
-        val context = requireContext()
-        with (AlertDialog.Builder(context)) {
-            setItems(DEBUG_ACTIVITIES) { dialog, idx ->
-                dialog.dismiss()
-                val intent = Intent(Intent.ACTION_MAIN)
-                intent.setClassName(context, "${context.packageName}.${DEBUG_ACTIVITIES[idx]}")
-                startActivity(intent)
-            }
-            create().show()
-        }
+    private fun loadSavedLogin() {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
+        binding.serverUrl.setText(prefs.getString(KEY_SERVER, "") ?: "")
+        binding.username.setText(prefs.getString(KEY_USERNAME, "") ?: "")
+        binding.password.setText(prefs.getString(KEY_PASSWORD, "") ?: "")
+        binding.rememberLogin.isChecked =
+            !prefs.getString(KEY_SERVER, "").isNullOrBlank() &&
+            !prefs.getString(KEY_USERNAME, "").isNullOrBlank() &&
+            !prefs.getString(KEY_PASSWORD, "").isNullOrBlank()
     }
 
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-        // phone screens are too small to show the action buttons alongside the logo
-        if (!Utils.isXLargeTablet(requireContext())) {
-            binding.logo.isVisible = newConfig.orientation != Configuration.ORIENTATION_LANDSCAPE
-        }
-    }
+    private fun loginXtream() {
+        val server = binding.serverUrl.text.toString().trim().removeSuffix("/")
+        val username = binding.username.text.toString().trim()
+        val password = binding.password.text.toString()
 
-    override fun onResume() {
-        super.onResume()
-        if (firstRun) {
-            restoreChoice()
-        } else if (returningFromPlayer) {
-            restoreChoice(prev, prevData)
-        }
-        firstRun = false
-        returningFromPlayer = false
-    }
-
-    private fun saveChoice(type: String, data: String? = null) {
-        if (prev != type)
-            lastPath = ""
-        prev = type
-        prevData = data
-
-        if (!binding.switch1.isChecked)
+        if (server.isBlank() || username.isBlank() || password.isBlank()) {
+            Toast.makeText(requireContext(), R.string.xtream_fill_all, Toast.LENGTH_SHORT).show()
             return
-        binding.switch1.isChecked = false
-        with (PreferenceManager.getDefaultSharedPreferences(requireContext()).edit()) {
-            putString("MainScreenFragment_remember", type)
-            if (data == null)
-                remove("MainScreenFragment_remember_data")
-            else
-                putString("MainScreenFragment_remember_data", data)
-            commit()
         }
-    }
 
-    private fun restoreChoice() {
-        with (PreferenceManager.getDefaultSharedPreferences(requireContext())) {
-            restoreChoice(
-                getString("MainScreenFragment_remember", "") ?: "",
-                getString("MainScreenFragment_remember_data", "")
-            )
+        val normalizedServer = normalizeServer(server)
+        if (normalizedServer == null) {
+            Toast.makeText(requireContext(), R.string.xtream_invalid_server, Toast.LENGTH_SHORT).show()
+            return
         }
-    }
 
-    private fun restoreChoice(type: String, data: String?) {
-        when (type) {
-            "doc" -> {
-                val uri = Uri.parse(data)
-                // check that we can still access the folder
-                if (!DocumentPickerFragment.isTreeUsable(requireContext(), uri))
-                    return
+        binding.loginBtn.isEnabled = false
+        binding.progress.isVisible = true
 
-                val i = Intent(context, FilePickerActivity::class.java)
-                i.putExtra("skip", FilePickerActivity.DOC_PICKER)
-                i.putExtra("root", uri.toString())
-                if (lastPath != "")
-                    i.putExtra("default_path", lastPath)
-                filePickerLauncher.launch(i)
+        executor.execute {
+            var success = false
+            var message = R.string.xtream_login_failed
+            try {
+                val u = URLEncoder.encode(username, "UTF-8")
+                val p = URLEncoder.encode(password, "UTF-8")
+                val apiUrl = "$normalizedServer/player_api.php?username=$u&password=$p"
+                val connection = URL(apiUrl).openConnection() as HttpURLConnection
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
+                connection.requestMethod = "GET"
+                connection.setRequestProperty("Accept", "application/json")
+                val code = connection.responseCode
+                if (code in 200..299) {
+                    val body = connection.inputStream.bufferedReader().use { it.readText() }
+                    val userInfo = JSONObject(body).optJSONObject("user_info")
+                    success = userInfo?.optInt("auth", 0) == 1
+                    if (!success) message = R.string.xtream_credentials_rejected
+                } else {
+                    message = R.string.xtream_server_error
+                }
+                connection.disconnect()
+            } catch (_: Exception) {
+                message = R.string.xtream_connection_failed
             }
-            "url" -> binding.urlBtn.callOnClick()
-            "file" -> binding.filepickerBtn.callOnClick()
+
+            requireActivity().runOnUiThread {
+                binding.loginBtn.isEnabled = true
+                binding.progress.isVisible = false
+                if (success) {
+                    if (binding.rememberLogin.isChecked) saveLogin(normalizedServer, username, password)
+                    else clearLogin()
+                    Toast.makeText(requireContext(), R.string.xtream_login_success, Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
-    private fun playFile(filepath: String) {
-        val i: Intent
-        if (filepath.startsWith("content://")) {
-            i = Intent(Intent.ACTION_VIEW, Uri.parse(filepath))
-        } else {
-            i = Intent()
-            i.putExtra("filepath", filepath)
+    private fun normalizeServer(server: String): String? {
+        return try {
+            val uri = URI(if (server.contains("://")) server else "http://$server")
+            val scheme = uri.scheme?.lowercase() ?: return null
+            if (scheme != "http" && scheme != "https" || uri.host.isNullOrBlank()) return null
+            URI(scheme, uri.userInfo, uri.host, uri.port, uri.path?.trimEnd('/'), null, null).toString().trimEnd('/')
+        } catch (_: Exception) {
+            null
         }
-        i.setClass(requireContext(), MPVActivity::class.java)
-        playerLauncher.launch(i)
+    }
+
+    private fun saveLogin(server: String, username: String, password: String) {
+        PreferenceManager.getDefaultSharedPreferences(requireContext()).edit()
+            .putString(KEY_SERVER, server).putString(KEY_USERNAME, username)
+            .putString(KEY_PASSWORD, password).apply()
+    }
+
+    private fun clearLogin() {
+        PreferenceManager.getDefaultSharedPreferences(requireContext()).edit()
+            .remove(KEY_SERVER).remove(KEY_USERNAME).remove(KEY_PASSWORD).apply()
+    }
+
+    override fun onDestroyView() {
+        executor.shutdownNow()
+        super.onDestroyView()
     }
 
     companion object {
-        private const val TAG = "mpv"
-
-        // list of debug or testing activities that can be launched
-        private val DEBUG_ACTIVITIES = arrayOf(
-            "IntentTestActivity",
-            "CodecInfoActivity"
-        )
+        private const val KEY_SERVER = "xtream_server"
+        private const val KEY_USERNAME = "xtream_username"
+        private const val KEY_PASSWORD = "xtream_password"
     }
 }

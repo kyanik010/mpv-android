@@ -4,6 +4,20 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <!-- Simple strings. -->
     <string name="mpv_activity">mpv</string>
+    <string name="xtream_login_title">Xtream Codes Login</string>
+    <string name="xtream_server_url">Server URL</string>
+    <string name="xtream_username">Username</string>
+    <string name="xtream_password">Password</string>
+    <string name="xtream_remember_login">Remember login</string>
+    <string name="xtream_login">Login</string>
+    <string name="xtream_fill_all">Please fill in Server URL, Username and Password.</string>
+    <string name="xtream_invalid_server">Invalid server URL.</string>
+    <string name="xtream_login_success">Xtream login successful.</string>
+    <string name="xtream_login_failed">Xtream login failed.</string>
+    <string name="xtream_credentials_rejected">The server rejected the username or password.</string>
+    <string name="xtream_server_error">The server returned an error.</string>
+    <string name="xtream_connection_failed">Could not connect to the Xtream server.</string>
+
     <string name="label_share_intent">Play in mpv</string>
     <string name="title_activity_settings">Settings</string>
     <string name="dialog_ok">OK</string>

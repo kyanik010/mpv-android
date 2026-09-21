@@ -58,6 +58,7 @@
     <!-- Action buttons -->
     <string name="switch_orientation">Switch orientation</string>
     <string name="open_external_audio">Open external audio…</string>
+    <string name="open_external_audio_url">Open external audio URL…</string>
     <string name="open_external_sub">Open external subtitle…</string>
     <string name="advanced_menu">Advanced…</string>
     <string name="resume_bg_playback">Play in background</string>

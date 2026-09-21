@@ -1406,6 +1406,18 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                         restoreState()
                     }; false
                 },
+                MenuItem(R.id.audioUrlBtn) {
+                    val helper = Utils.OpenUrlDialog(this@MPVActivity)
+                    with (helper) {
+                        builder.setPositiveButton(R.string.dialog_ok) { _, _ ->
+                            MPVLib.command(arrayOf("audio-add", text, "select"))
+                            restoreState()
+                        }
+                        builder.setNegativeButton(R.string.dialog_cancel) { dialog, _ -> dialog.cancel() }
+                        create().show()
+                    }
+                    false
+                },
                 MenuItem(R.id.subBtn) {
                     openFilePickerFor(RCODE_EXTERNAL_SUB, R.string.open_external_sub) { result, data ->
                         addExternalThing("sub-add", result, data)

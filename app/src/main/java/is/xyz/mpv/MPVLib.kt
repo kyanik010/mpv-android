@@ -15,13 +15,75 @@ object MPVLib {
         }
     }
 
-    external fun create(appctx: Context)
-    external fun init()
-    external fun destroy()
+    private var applicationContext: Context? = null
+    private var audioInstanceStarted = false
+
+    private external fun createNative(appctx: Context)
+    private external fun initNative()
+    private external fun destroyNative()
+    private external fun commandNative(cmd: Array<out String>)
+
+    private external fun createAudioNative()
+    private external fun initAudioNative()
+    private external fun destroyAudioNative()
+    private external fun commandAudioNative(cmd: Array<out String>)
+
+    fun create(appctx: Context) {
+        applicationContext = appctx.applicationContext
+        createNative(appctx)
+    }
+
+    fun init() = initNative()
+
+    fun destroy() {
+        stopExternalAudio()
+        destroyNative()
+        applicationContext = null
+    }
+
     external fun attachSurface(surface: Surface)
     external fun detachSurface()
 
-    external fun command(cmd: Array<out String>)
+    fun command(cmd: Array<out String>) {
+        if (cmd.isNotEmpty()) {
+            when (cmd[0]) {
+                "audio-add" -> {
+                    val url = cmd.getOrNull(1)?.takeIf { it.isNotBlank() }
+                    if (url != null) {
+                        startExternalAudio(url)
+                    }
+                    return
+                }
+                "audio-remove" -> {
+                    stopExternalAudio()
+                    commandNative(arrayOf("set", "aid", "auto"))
+                    return
+                }
+            }
+        }
+        commandNative(cmd)
+    }
+
+    private fun startExternalAudio(url: String) {
+        // The video MPV instance keeps the exact same video stream, but no longer
+        // decodes/outputs its original audio track.
+        commandNative(arrayOf("set", "aid", "no"))
+
+        if (!audioInstanceStarted) {
+            createAudioNative()
+            initAudioNative()
+            audioInstanceStarted = true
+        }
+
+        commandAudioNative(arrayOf("loadfile", url, "replace"))
+    }
+
+    private fun stopExternalAudio() {
+        if (!audioInstanceStarted)
+            return
+        destroyAudioNative()
+        audioInstanceStarted = false
+    }
 
     external fun setOptionString(name: String, value: String): Int
 

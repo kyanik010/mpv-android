@@ -113,19 +113,17 @@ void *event_thread(void *arg)
 // do not forward its events to MPVLib: the video UI observes only the main player.
 void *audio_event_thread(void *arg)
 {
-    JNIEnv *env = NULL;
-    acquire_jni_env(g_vm, &env);
-    if (!env)
+    auto *instance = static_cast<MPVInstance *>(arg);
+    if (!instance || !instance->mpv)
         return NULL;
 
-    while (1) {
-        mpv_event *mp_event = mpv_wait_event(g_audio_mpv, -1.0);
-        if (g_audio_event_thread_request_exit)
+    while (!instance->event_thread_request_exit) {
+        mpv_event *mp_event = mpv_wait_event(instance->mpv, -1.0);
+        if (instance->event_thread_request_exit)
             break;
         if (mp_event->event_id != MPV_EVENT_NONE)
             ALOGV("audio event: %s", mpv_event_name(mp_event->event_id));
     }
 
-    g_vm->DetachCurrentThread();
     return NULL;
 }

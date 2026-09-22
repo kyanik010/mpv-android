@@ -17,6 +17,11 @@
     <string name="xtream_credentials_rejected">The server rejected the username or password.</string>
     <string name="xtream_server_error">The server returned an error.</string>
     <string name="xtream_connection_failed">Could not connect to the Xtream server.</string>
+    <string name="xtream_no_live_channels">Login succeeded, but no live channels were returned.</string>
+    <string name="xtream_channels_failed">Could not load live channels from the Xtream server.</string>
+    <string name="xtream_select_video">Select video channel</string>
+    <string name="xtream_select_audio">Select audio channel</string>
+    <string name="xtream_search_channel">Search channel</string>
 
     <string name="label_share_intent">Play in mpv</string>
     <string name="title_activity_settings">Settings</string>

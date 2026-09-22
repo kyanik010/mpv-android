@@ -47,7 +47,6 @@ static void sendEventToJava(JNIEnv *env, int event)
 
 static void sendLogMessageToJava(JNIEnv *env, mpv_event_log_message *msg)
 {
-    // filter the most obvious cases of invalid utf-8, since Java would choke on it
     const auto invalid_utf8 = [] (unsigned char c) {
         return c == 0xc0 || c == 0xc1 || c >= 0xf5;
     };
@@ -107,5 +106,26 @@ void *event_thread(void *arg)
 
     g_vm->DetachCurrentThread();
 
+    return NULL;
+}
+
+// The external audio instance has its own event queue and thread. We intentionally
+// do not forward its events to MPVLib: the video UI observes only the main player.
+void *audio_event_thread(void *arg)
+{
+    JNIEnv *env = NULL;
+    acquire_jni_env(g_vm, &env);
+    if (!env)
+        return NULL;
+
+    while (1) {
+        mpv_event *mp_event = mpv_wait_event(g_audio_mpv, -1.0);
+        if (g_audio_event_thread_request_exit)
+            break;
+        if (mp_event->event_id != MPV_EVENT_NONE)
+            ALOGV("audio event: %s", mpv_event_name(mp_event->event_id));
+    }
+
+    g_vm->DetachCurrentThread();
     return NULL;
 }

@@ -27,7 +27,7 @@ extern "C" {
     jni_func(void, commandNative, jobjectArray jarray);
 
     jni_func(jlong, createAudioNative);
-    jni_func(void, initAudioNative, jlong instance);
+    jni_func(jboolean, initAudioNative, jlong instance);
     jni_func(void, destroyAudioNative, jlong instance);
     jni_func(void, commandAudioNative, jlong instance, jobjectArray jarray);
 };
@@ -147,11 +147,11 @@ jni_func(jlong, createAudioNative) {
     return reinterpret_cast<jlong>(instance);
 }
 
-jni_func(void, initAudioNative, jlong instancePtr) {
+jni_func(jboolean, initAudioNative, jlong instancePtr) {
     auto *instance = reinterpret_cast<MPVInstance *>(instancePtr);
     if (!instance || !instance->mpv) {
         ALOGE("audio mpv is not created");
-        return;
+        return JNI_FALSE;
     }
 
     int err = mpv_initialize(instance->mpv);
@@ -160,7 +160,7 @@ jni_func(void, initAudioNative, jlong instancePtr) {
         mpv_terminate_destroy(instance->mpv);
         instance->mpv = nullptr;
         delete instance;
-        return;
+        return JNI_FALSE;
     }
 
     instance->event_thread_request_exit = false;
@@ -169,9 +169,10 @@ jni_func(void, initAudioNative, jlong instancePtr) {
         mpv_terminate_destroy(instance->mpv);
         instance->mpv = nullptr;
         delete instance;
-        return;
+        return JNI_FALSE;
     }
     pthread_setname_np(instance->event_thread_id, "audio_event_thread");
+    return JNI_TRUE;
 }
 
 jni_func(void, destroyAudioNative, jlong instancePtr) {

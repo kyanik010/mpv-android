@@ -2045,10 +2045,17 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         }
 
         if (eventId == MpvEvent.MPV_EVENT_FILE_LOADED) {
-            // At FILE_LOADED, the main IPTV stream has finished its track selection.
-            // Loading the external audio here prevents MPV from subsequently replacing
-            // the selected external track during the main stream initialization.
+            // Prepare a larger network buffer before opening the second live IPTV stream.
+            // This is important for high-bitrate 4K video: audio-add creates another
+            // network demuxer, and without enough buffering the main video can underrun.
             externalAudioUrl?.let { audioUrl ->
+                Log.v(TAG, "Preparing network cache for external IPTV audio")
+                MPVLib.command(arrayOf("set", "demuxer-thread", "yes"))
+                MPVLib.command(arrayOf("set", "cache", "yes"))
+                MPVLib.command(arrayOf("set", "cache-secs", "30"))
+                MPVLib.command(arrayOf("set", "demuxer-max-bytes", "512MiB"))
+                MPVLib.command(arrayOf("set", "cache-pause", "yes"))
+
                 Log.v(TAG, "Adding external IPTV audio after FILE_LOADED: $audioUrl")
                 MPVLib.command(arrayOf("audio-add", audioUrl, "select"))
             }
@@ -2068,122 +2075,3 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     private var pausedForSeek = 0
 
     private fun fadeGestureText() {
-        fadeHandler.removeCallbacks(fadeRunnable3)
-        binding.gestureTextView.visibility = View.VISIBLE
-
-        fadeHandler.postDelayed(fadeRunnable3, 500L)
-    }
-
-    override fun onPropertyChange(p: PropertyChange, diff: Float) {
-        val gestureTextView = binding.gestureTextView
-        when (p) {
-            /* Drag gestures */
-            PropertyChange.Init -> {
-                mightWantToToggleControls = false
-
-                initialSeek = (psc.position / 1000f)
-                initialBright = Utils.getScreenBrightness(this) ?: 0.5f
-                with (audioManager!!) {
-                    initialVolume = getStreamVolume(STREAM_TYPE)
-                    maxVolume = if (isVolumeFixed)
-                        0
-                    else
-                        getStreamMaxVolume(STREAM_TYPE)
-                }
-                if (!isPlayingAudio)
-                    maxVolume = 0 // disallow volume gesture if no audio
-                pausedForSeek = 0
-
-                fadeHandler.removeCallbacks(fadeRunnable3)
-                gestureTextView.visibility = View.VISIBLE
-                gestureTextView.text = ""
-            }
-            PropertyChange.Seek -> {
-                // disable seeking when duration is unknown
-                val duration = (psc.duration / 1000f)
-                if (duration == 0f || initialSeek < 0)
-                    return
-                if (smoothSeekGesture && pausedForSeek == 0) {
-                    pausedForSeek = if (psc.pause) 2 else 1
-                    if (pausedForSeek == 1)
-                        player.paused = true
-                }
-
-                val newPosExact = (initialSeek + diff).coerceIn(0f, duration)
-                val newPos = newPosExact.roundToInt()
-                val newDiff = (newPosExact - initialSeek).roundToInt()
-                if (smoothSeekGesture) {
-                    player.timePos = newPosExact.toDouble() // (exact seek)
-                } else {
-                    // seek faster than assigning to timePos but less precise
-                    MPVLib.command(arrayOf("seek", "$newPosExact", "absolute+keyframes"))
-                }
-                // Note: don't call updatePlaybackPos() here because mpv will seek a timestamp
-                // actually present in the file, and not the exact one we specified.
-
-                val posText = Utils.prettyTime(newPos)
-                val diffText = Utils.prettyTime(newDiff, true)
-                gestureTextView.text = getString(R.string.ui_seek_distance, posText, diffText)
-            }
-            PropertyChange.Volume -> {
-                if (maxVolume == 0)
-                    return
-                val newVolume = (initialVolume + (diff * maxVolume).toInt()).coerceIn(0, maxVolume)
-                val newVolumePercent = 100 * newVolume / maxVolume
-                audioManager!!.setStreamVolume(STREAM_TYPE, newVolume, 0)
-
-                gestureTextView.text = getString(R.string.ui_volume, newVolumePercent)
-            }
-            PropertyChange.Bright -> {
-                val newBrightPercent = ((initialBright + diff).coerceIn(0f, 1f) * 100).roundToInt()
-                lastScreenBrightness = newBrightPercent
-                updateScreenBrightness()
-
-                gestureTextView.text = getString(R.string.ui_brightness, newBrightPercent)
-            }
-            PropertyChange.Finalize -> {
-                if (pausedForSeek == 1)
-                    player.paused = false
-                gestureTextView.visibility = View.GONE
-            }
-
-            /* Tap gestures */
-            PropertyChange.SeekFixed -> {
-                val seekTime = diff * 10f
-                val newPos = psc.positionSec + seekTime.toInt() // only for display
-                MPVLib.command(arrayOf("seek", seekTime.toString(), "relative"))
-
-                val diffText = Utils.prettyTime(seekTime.toInt(), true)
-                gestureTextView.text = getString(R.string.ui_seek_distance, Utils.prettyTime(newPos), diffText)
-                fadeGestureText()
-            }
-            PropertyChange.PlayPause -> player.cyclePause()
-            PropertyChange.Custom -> {
-                val keycode = 0x10002 + diff.toInt()
-                MPVLib.command(arrayOf("keypress", "0x%x".format(keycode)))
-            }
-        }
-    }
-
-    companion object {
-        private const val TAG = "mpv"
-        // how long should controls be displayed on screen (ms)
-        private const val CONTROLS_DISPLAY_TIMEOUT = 1500L
-        // how long controls fade to disappear (ms)
-        private const val CONTROLS_FADE_DURATION = 500L
-        // smallest aspect ratio that is considered non-square
-        private const val ASPECT_RATIO_MIN = 1.2f // covers 5:4 and up
-        // fraction to which audio volume is ducked on loss of audio focus
-        private const val AUDIO_FOCUS_DUCKING = 0.5f
-        // request codes for invoking other activities
-        private const val RCODE_EXTERNAL_AUDIO = 1000
-        private const val RCODE_EXTERNAL_SUB = 1001
-        private const val RCODE_LOAD_FILE = 1002
-        // action of result intent
-        private const val RESULT_INTENT = "is.xyz.mpv.MPVActivity.result"
-        // stream type used with AudioManager
-        private const val STREAM_TYPE = AudioManager.STREAM_MUSIC
-        // precision used by seekbar (1/s)
-        private const val SEEK_BAR_PRECISION = 2
-    }
-}

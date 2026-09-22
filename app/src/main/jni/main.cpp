@@ -26,8 +26,8 @@ extern "C" {
 
     jni_func(void, commandNative, jobjectArray jarray);
 
-    jni_func(void, createAudioNative);
-    jni_func(void, initAudioNative);
+    jni_func(jboolean, createAudioNative);
+    jni_func(jboolean, initAudioNative);
     jni_func(void, destroyAudioNative);
     jni_func(void, commandAudioNative, jobjectArray jarray);
 };

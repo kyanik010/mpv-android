@@ -248,6 +248,9 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     private var playbackHasStarted = false
     private var onloadCommands = mutableListOf<Array<String>>()
+    // External IPTV audio must be attached after the main file is fully loaded.
+    // Adding it on MPV_EVENT_START_FILE races with the main stream's track initialization.
+    private var externalAudioUrl: String? = null
 
     // Activity lifetime
 
@@ -1142,6 +1145,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     private fun parseIntentExtras(extras: Bundle?) {
         onloadCommands.clear()
+        externalAudioUrl = null
         if (extras == null)
             return
 
@@ -1156,8 +1160,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         if (extras.getByte("decode_mode") == 2.toByte())
             pushOption("hwdec", "no")
         extras.getString("external_audio_url")?.takeIf { it.isNotBlank() }?.let { audioUrl ->
-            Log.v(TAG, "Adding external IPTV audio from intent: $audioUrl")
-            onloadCommands.add(arrayOf("audio-add", audioUrl, "select"))
+            externalAudioUrl = audioUrl
+            Log.v(TAG, "Queued external IPTV audio for FILE_LOADED: $audioUrl")
         }
 
         if (extras.containsKey("subs")) {
@@ -2038,6 +2042,16 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             }
 
             playbackHasStarted = true
+        }
+
+        if (eventId == MpvEvent.MPV_EVENT_FILE_LOADED) {
+            // At FILE_LOADED, the main IPTV stream has finished its track selection.
+            // Loading the external audio here prevents MPV from subsequently replacing
+            // the selected external track during the main stream initialization.
+            externalAudioUrl?.let { audioUrl ->
+                Log.v(TAG, "Adding external IPTV audio after FILE_LOADED: $audioUrl")
+                MPVLib.command(arrayOf("audio-add", audioUrl, "select"))
+            }
         }
 
         if (!activityIsForeground) return

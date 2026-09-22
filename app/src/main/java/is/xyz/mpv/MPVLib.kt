@@ -16,17 +16,17 @@ object MPVLib {
     }
 
     private var applicationContext: Context? = null
-    private var audioInstanceStarted = false
+    private var audioInstancePtr: Long = 0L
 
     private external fun createNative(appctx: Context)
     private external fun initNative()
     private external fun destroyNative()
     private external fun commandNative(cmd: Array<out String>)
 
-    private external fun createAudioNative(): Boolean
-    private external fun initAudioNative(): Boolean
-    private external fun destroyAudioNative()
-    private external fun commandAudioNative(cmd: Array<out String>)
+    private external fun createAudioNative(): Long
+    private external fun initAudioNative(instance: Long)
+    private external fun destroyAudioNative(instance: Long)
+    private external fun commandAudioNative(instance: Long, cmd: Array<out String>)
 
     fun create(appctx: Context) {
         applicationContext = appctx.applicationContext
@@ -69,20 +69,27 @@ object MPVLib {
         // decodes/outputs its original audio track.
         commandNative(arrayOf("set", "aid", "no"))
 
-        if (!audioInstanceStarted) {
-            createAudioNative()
-            initAudioNative()
-            audioInstanceStarted = true
+        if (audioInstancePtr == 0L) {
+            val instance = createAudioNative()
+            if (instance == 0L) {
+                commandNative(arrayOf("set", "aid", "auto"))
+                return
+            }
+
+            audioInstancePtr = instance
+            initAudioNative(audioInstancePtr)
         }
 
-        commandAudioNative(arrayOf("loadfile", url, "replace"))
+        if (audioInstancePtr != 0L) {
+            commandAudioNative(audioInstancePtr, arrayOf("loadfile", url, "replace"))
+        }
     }
 
     private fun stopExternalAudio() {
-        if (!audioInstanceStarted)
+        if (audioInstancePtr == 0L)
             return
-        destroyAudioNative()
-        audioInstanceStarted = false
+        destroyAudioNative(audioInstancePtr)
+        audioInstancePtr = 0L
     }
 
     external fun setOptionString(name: String, value: String): Int

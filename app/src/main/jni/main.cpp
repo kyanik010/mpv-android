@@ -16,6 +16,7 @@ extern "C" {
 #include "log.h"
 #include "jni_utils.h"
 #include "event.h"
+#include "globals.h"
 
 #define ARRAYLEN(a) (sizeof(a)/sizeof(a[0]))
 

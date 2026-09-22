@@ -192,7 +192,7 @@ class MainScreenFragment : Fragment(R.layout.fragment_main_screen) {
 
         val search = EditText(context).apply {
             hint = getString(R.string.xtream_search_channel)
-            singleLine = true
+            setSingleLine(true)
         }
         val list = ListView(context)
         root.addView(search, LinearLayout.LayoutParams(

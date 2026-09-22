@@ -24,7 +24,7 @@ object MPVLib {
     private external fun commandNative(cmd: Array<out String>)
 
     private external fun createAudioNative(): Long
-    private external fun initAudioNative(instance: Long)
+    private external fun initAudioNative(instance: Long): Boolean
     private external fun destroyAudioNative(instance: Long)
     private external fun commandAudioNative(instance: Long, cmd: Array<out String>)
 
@@ -76,8 +76,13 @@ object MPVLib {
                 return
             }
 
+            val initialized = initAudioNative(instance)
+            if (!initialized) {
+                audioInstancePtr = 0L
+                commandNative(arrayOf("set", "aid", "auto"))
+                return
+            }
             audioInstancePtr = instance
-            initAudioNative(audioInstancePtr)
         }
 
         if (audioInstancePtr != 0L) {

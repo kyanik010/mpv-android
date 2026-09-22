@@ -23,8 +23,8 @@ object MPVLib {
     private external fun destroyNative()
     private external fun commandNative(cmd: Array<out String>)
 
-    private external fun createAudioNative()
-    private external fun initAudioNative()
+    private external fun createAudioNative(): Boolean
+    private external fun initAudioNative(): Boolean
     private external fun destroyAudioNative()
     private external fun commandAudioNative(cmd: Array<out String>)
 

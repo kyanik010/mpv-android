@@ -1155,6 +1155,11 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
         if (extras.getByte("decode_mode") == 2.toByte())
             pushOption("hwdec", "no")
+        extras.getString("external_audio_url")?.takeIf { it.isNotBlank() }?.let { audioUrl ->
+            Log.v(TAG, "Adding external IPTV audio from intent: $audioUrl")
+            onloadCommands.add(arrayOf("audio-add", audioUrl, "select"))
+        }
+
         if (extras.containsKey("subs")) {
             val subList = Utils.getParcelableArray<Uri>(extras, "subs")
             val subsToEnable = Utils.getParcelableArray<Uri>(extras, "subs.enable")

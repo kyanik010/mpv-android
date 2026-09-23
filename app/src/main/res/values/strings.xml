@@ -4,7 +4,16 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <!-- Simple strings. -->
     <string name="mpv_activity">mpv</string>
-    <string name="xtream_login_title">Xtream Codes Login</string>
+    <string name="xtream_login_title">Xtream Codes Dual Source</string>
+    <string name="xtream_video_source">Video Source — Xtream</string>
+    <string name="xtream_audio_source">Audio Source — separate Xtream account</string>
+    <string name="xtream_audio_server_url">Audio Server URL</string>
+    <string name="xtream_audio_username">Audio Username</string>
+    <string name="xtream_audio_password">Audio Password</string>
+    <string name="xtream_connect_both">Connect Video + Audio</string>
+    <string name="xtream_no_video_channels">No live video channels returned.</string>
+    <string name="xtream_no_audio_channels">No live audio channels returned.</string>
+
     <string name="xtream_server_url">Server URL</string>
     <string name="xtream_username">Username</string>
     <string name="xtream_password">Password</string>

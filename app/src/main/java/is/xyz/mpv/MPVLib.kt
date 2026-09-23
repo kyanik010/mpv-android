@@ -78,6 +78,18 @@ object MPVLib {
     }
 
     @Synchronized
+    fun setExternalAudioPaused(paused: Boolean) {
+        if (audioInstancePtr != 0L)
+            commandAudioNative(audioInstancePtr, arrayOf("set", "pause", if (paused) "yes" else "no"))
+    }
+
+    @Synchronized
+    fun setExternalAudioSpeed(speed: Double) {
+        if (audioInstancePtr != 0L && speed.isFinite() && speed > 0.0)
+            setAudioPropertyDoubleNative(audioInstancePtr, "speed", speed)
+    }
+
+    @Synchronized
     fun isExternalAudioActive(): Boolean = externalAudioActive
 
     private fun startExternalAudio(url: String) {

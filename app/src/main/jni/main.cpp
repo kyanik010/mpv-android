@@ -31,6 +31,7 @@ extern "C" {
     jni_func(jboolean, initAudioNative, jlong instance);
     jni_func(void, destroyAudioNative, jlong instance);
     jni_func(void, commandAudioNative, jlong instance, jobjectArray jarray);
+    jni_func(void, setAudioPropertyDoubleNative, jlong instance, jstring property, jdouble value);
 };
 
 JavaVM *g_vm;
@@ -139,7 +140,9 @@ jni_func(jlong, createAudioNative) {
     mpv_set_option_string(instance->mpv, "video", "no");
     mpv_set_option_string(instance->mpv, "vo", "null");
     mpv_set_option_string(instance->mpv, "audio-display", "no");
-    mpv_set_option_string(instance->mpv, "audio-fallback-to-null", "yes");
+    mpv_set_option_string(instance->mpv, "audio-fallback-to-null", "no");
+    mpv_set_option_string(instance->mpv, "ao", "audiotrack,opensles");
+    mpv_set_option_string(instance->mpv, "audio-client-name", "mpv-android-external-audio");
     mpv_set_option_string(instance->mpv, "idle", "yes");
     mpv_set_option_string(instance->mpv, "keep-open", "yes");
     mpv_request_log_messages(instance->mpv, "terminal-default");
@@ -219,4 +222,17 @@ jni_func(void, commandAudioNative, jlong instancePtr, jobjectArray jarray) {
         env->ReleaseStringUTFChars(strings[i], arguments[i]);
         env->DeleteLocalRef(strings[i]);
     }
+}
+
+jni_func(void, setAudioPropertyDoubleNative, jlong instancePtr, jstring jproperty, jdouble jvalue) {
+    auto *instance = reinterpret_cast<MPVInstance *>(instancePtr);
+    if (!instance || !instance->mpv || !jproperty)
+        return;
+
+    const char *property = env->GetStringUTFChars(jproperty, NULL);
+    double value = static_cast<double>(jvalue);
+    int result = mpv_set_property(instance->mpv, property, MPV_FORMAT_DOUBLE, &value);
+    if (result < 0)
+        ALOGE("external audio mpv_set_property(%s) failed: %s", property, mpv_error_string(result));
+    env->ReleaseStringUTFChars(jproperty, property);
 }

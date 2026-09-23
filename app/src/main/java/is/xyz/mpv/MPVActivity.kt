@@ -257,6 +257,16 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     private var externalAudioNames: Array<String> = emptyArray()
     private var externalAudioLoaded = false
     private var dualAudioPanel: LinearLayout? = null
+    private val externalAudioSyncHandler = Handler(Looper.getMainLooper())
+    private val externalAudioSyncRunnable = object : Runnable {
+        override fun run() {
+            if (externalAudioLoaded) {
+                val pos = MPVLib.getPropertyDouble("time-pos/full")
+                if (pos != null) MPVLib.syncExternalAudioToVideo(pos)
+                externalAudioSyncHandler.postDelayed(this, 3000L)
+            }
+        }
+    }
 
     // Activity lifetime
 
@@ -388,6 +398,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         stopServiceRunnable.run()
 
         player.removeObserver(this)
+        externalAudioSyncHandler.removeCallbacksAndMessages(null)
+        MPVLib.command(arrayOf("audio-remove"))
         player.destroy()
         super.onDestroy()
     }
@@ -1007,23 +1019,35 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     private fun removeExternalAudio() {
-        MPVLib.command(arrayOf("audio-remove", "auto"))
+        MPVLib.command(arrayOf("audio-remove"))
         externalAudioLoaded = false
+        externalAudioSyncHandler.removeCallbacks(externalAudioSyncRunnable)
         showToast(getString(R.string.dual_audio_removed))
     }
 
     private fun reconnectExternalAudio() {
         val url = externalAudioUrl ?: return
-        if (externalAudioLoaded) MPVLib.command(arrayOf("audio-remove", "auto"))
-        MPVLib.command(arrayOf("audio-add", url, "select"))
-        externalAudioLoaded = true
-        showToast(getString(R.string.dual_audio_connected))
+        if (externalAudioLoaded) {
+            MPVLib.command(arrayOf("audio-remove"))
+            externalAudioLoaded = false
+        }
+        MPVLib.command(arrayOf("audio-add", url))
+        externalAudioLoaded = MPVLib.isExternalAudioActive()
+        if (externalAudioLoaded) {
+            val pos = MPVLib.getPropertyDouble("time-pos/full")
+            if (pos != null) MPVLib.syncExternalAudioToVideo(pos)
+            externalAudioSyncHandler.removeCallbacks(externalAudioSyncRunnable)
+            externalAudioSyncHandler.postDelayed(externalAudioSyncRunnable, 3000L)
+            showToast(getString(R.string.dual_audio_connected))
+        } else {
+            showToast(getString(R.string.dual_audio_unavailable))
+        }
     }
 
     private fun adjustExternalAudioDelay(delta: Double) {
         val current = MPVLib.getPropertyDouble("audio-delay") ?: 0.0
         val next = current + delta
-        MPVLib.command(arrayOf("set", "audio-delay", next.toString()))
+        MPVLib.setExternalAudioDelay(next)
         showToast(getString(R.string.dual_audio_sync_value, next))
     }
 

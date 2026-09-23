@@ -2056,6 +2056,9 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             updateAudioPresence()
         }
 
+        if (property == "pause") {
+            MPVLib.setExternalAudioPaused(psc.pause)
+        }
         if (property == "pause" || property == "current-tracks/audio/selected")
             handleAudioFocus()
 
@@ -2067,6 +2070,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         val metaUpdated = psc.update(property, value)
         if (metaUpdated)
             updateMediaSession()
+        if (property == "pause")
+            MPVLib.setExternalAudioPaused(value)
         if (property == "shuffle") {
             mediaSession?.setShuffleMode(if (value)
                 PlaybackStateCompat.SHUFFLE_MODE_ALL
@@ -2100,6 +2105,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     override fun eventProperty(property: String, value: String) {
+        if (property == "speed")
+            value.toDoubleOrNull()?.let { MPVLib.setExternalAudioSpeed(it) }
         val metaUpdated = psc.update(property, value)
         if (metaUpdated)
             updateMediaSession()
@@ -2129,6 +2136,12 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             playbackHasStarted = true
         }
 
+        if (eventId == MpvEvent.MPV_EVENT_SEEK && externalAudioLoaded) {
+            externalAudioSyncHandler.postDelayed({
+                MPVLib.getPropertyDouble("time-pos/full")?.let { MPVLib.syncExternalAudioToVideo(it) }
+            }, 350L)
+        }
+
         if (eventId == MpvEvent.MPV_EVENT_FILE_LOADED) {
             externalAudioUrl?.let { audioUrl ->
                 MPVLib.command(arrayOf("set", "demuxer-thread", "yes"))
@@ -2136,9 +2149,17 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                 MPVLib.command(arrayOf("set", "cache-secs", "30"))
                 MPVLib.command(arrayOf("set", "demuxer-max-bytes", "512MiB"))
                 MPVLib.command(arrayOf("set", "cache-pause", "yes"))
-                MPVLib.command(arrayOf("audio-add", audioUrl, "select"))
-                externalAudioLoaded = true
-                showToast(getString(R.string.dual_audio_connected))
+                MPVLib.command(arrayOf("audio-add", audioUrl))
+                externalAudioLoaded = MPVLib.isExternalAudioActive()
+                if (externalAudioLoaded) {
+                    val pos = MPVLib.getPropertyDouble("time-pos/full")
+                    if (pos != null) MPVLib.syncExternalAudioToVideo(pos)
+                    MPVLib.setExternalAudioPaused(psc.pause)
+                    psc.speed?.let { MPVLib.setExternalAudioSpeed(it) }
+                    externalAudioSyncHandler.removeCallbacks(externalAudioSyncRunnable)
+                    externalAudioSyncHandler.postDelayed(externalAudioSyncRunnable, 2000L)
+                    showToast(getString(R.string.dual_audio_connected))
+                }
             }
         }
 

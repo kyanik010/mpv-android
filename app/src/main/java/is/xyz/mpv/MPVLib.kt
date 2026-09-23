@@ -15,13 +15,114 @@ object MPVLib {
         }
     }
 
-    external fun create(appctx: Context)
-    external fun init()
-    external fun destroy()
+    private var applicationContext: Context? = null
+    private var audioInstancePtr: Long = 0L
+    private var externalAudioActive = false
+
+    private external fun createNative(appctx: Context)
+    private external fun initNative()
+    private external fun destroyNative()
+    private external fun commandNative(cmd: Array<out String>)
+
+    private external fun createAudioNative(): Long
+    private external fun initAudioNative(instance: Long): Boolean
+    private external fun destroyAudioNative(instance: Long)
+    private external fun commandAudioNative(instance: Long, cmd: Array<out String>)
+    private external fun setAudioPropertyDoubleNative(instance: Long, property: String, value: Double)
+
+    fun create(appctx: Context) {
+        applicationContext = appctx.applicationContext
+        createNative(appctx)
+    }
+
+    fun init() = initNative()
+
+    fun destroy() {
+        stopExternalAudio()
+        destroyNative()
+        applicationContext = null
+    }
+
     external fun attachSurface(surface: Surface)
     external fun detachSurface()
 
-    external fun command(cmd: Array<out String>)
+    @Synchronized
+    fun command(cmd: Array<out String>) {
+        if (cmd.isNotEmpty()) {
+            when (cmd[0]) {
+                "audio-add" -> {
+                    val url = cmd.getOrNull(1)?.takeIf { it.isNotBlank() }
+                    if (url != null) startExternalAudio(url)
+                    return
+                }
+                "audio-remove" -> {
+                    stopExternalAudio()
+                    commandNative(arrayOf("set", "aid", "auto"))
+                    return
+                }
+            }
+        }
+        commandNative(cmd)
+    }
+
+    @Synchronized
+    fun setExternalAudioDelay(value: Double) {
+        if (audioInstancePtr != 0L)
+            setAudioPropertyDoubleNative(audioInstancePtr, "audio-delay", value)
+    }
+
+    @Synchronized
+    fun syncExternalAudioToVideo(position: Double) {
+        if (audioInstancePtr != 0L && position.isFinite() && position >= 0.0)
+            setAudioPropertyDoubleNative(audioInstancePtr, "time-pos", position)
+    }
+
+    @Synchronized
+    fun setExternalAudioPaused(paused: Boolean) {
+        if (audioInstancePtr != 0L)
+            commandAudioNative(audioInstancePtr, arrayOf("set", "pause", if (paused) "yes" else "no"))
+    }
+
+    @Synchronized
+    fun setExternalAudioSpeed(speed: Double) {
+        if (audioInstancePtr != 0L && speed.isFinite() && speed > 0.0)
+            setAudioPropertyDoubleNative(audioInstancePtr, "speed", speed)
+    }
+
+    @Synchronized
+    fun isExternalAudioActive(): Boolean = externalAudioActive
+
+    private fun startExternalAudio(url: String) {
+        if (audioInstancePtr == 0L) {
+            val instance = createAudioNative()
+            if (instance == 0L) {
+                commandNative(arrayOf("set", "aid", "auto"))
+                return
+            }
+
+            val initialized = initAudioNative(instance)
+            if (!initialized) {
+                audioInstancePtr = 0L
+                commandNative(arrayOf("set", "aid", "auto"))
+                return
+            }
+            audioInstancePtr = instance
+        }
+
+        if (audioInstancePtr != 0L) {
+            commandAudioNative(audioInstancePtr, arrayOf("loadfile", url, "replace"))
+            commandNative(arrayOf("set", "aid", "no"))
+            externalAudioActive = true
+        }
+    }
+
+    private fun stopExternalAudio() {
+        if (audioInstancePtr != 0L) {
+            destroyAudioNative(audioInstancePtr)
+            audioInstancePtr = 0L
+        }
+        externalAudioActive = false
+    }
 
     external fun setOptionString(name: String, value: String): Int
 

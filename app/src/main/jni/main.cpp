@@ -16,15 +16,22 @@ extern "C" {
 #include "log.h"
 #include "jni_utils.h"
 #include "event.h"
+#include "globals.h"
 
 #define ARRAYLEN(a) (sizeof(a)/sizeof(a[0]))
 
 extern "C" {
-    jni_func(void, create, jobject appctx);
-    jni_func(void, init);
-    jni_func(void, destroy);
+    jni_func(void, createNative, jobject appctx);
+    jni_func(void, initNative);
+    jni_func(void, destroyNative);
 
-    jni_func(void, command, jobjectArray jarray);
+    jni_func(void, commandNative, jobjectArray jarray);
+
+    jni_func(jlong, createAudioNative);
+    jni_func(jboolean, initAudioNative, jlong instance);
+    jni_func(void, destroyAudioNative, jlong instance);
+    jni_func(void, commandAudioNative, jlong instance, jobjectArray jarray);
+    jni_func(void, setAudioPropertyDoubleNative, jlong instance, jstring property, jdouble value);
 };
 
 JavaVM *g_vm;
@@ -52,7 +59,7 @@ static void prepare_environment(JNIEnv *env, jobject appctx) {
     init_methods_cache(env);
 }
 
-jni_func(void, create, jobject appctx) {
+jni_func(void, createNative, jobject appctx) {
     if (g_mpv)
         die("mpv is already initialized");
 
@@ -62,13 +69,11 @@ jni_func(void, create, jobject appctx) {
     if (!g_mpv)
         die("context init failed");
 
-    // use terminal log level but request verbose messages
-    // this way --msg-level can be used to adjust later
     mpv_request_log_messages(g_mpv, "terminal-default");
     mpv_set_option_string(g_mpv, "msg-level", "all=v");
 }
 
-jni_func(void, init) {
+jni_func(void, initNative) {
     if (!g_mpv)
         die("mpv is not created");
 
@@ -81,13 +86,12 @@ jni_func(void, init) {
     pthread_setname_np(event_thread_id, "event_thread");
 }
 
-jni_func(void, destroy) {
+jni_func(void, destroyNative) {
     if (!g_mpv) {
         ALOGV("mpv destroy called but it's already destroyed");
         return;
     }
 
-    // poke event thread and wait for it to exit
     g_event_thread_request_exit = true;
     mpv_wakeup(g_mpv);
     pthread_join(event_thread_id, NULL);
@@ -96,13 +100,13 @@ jni_func(void, destroy) {
     g_mpv = NULL;
 }
 
-jni_func(void, command, jobjectArray jarray) {
+jni_func(void, commandNative, jobjectArray jarray) {
     CHECK_MPV_INIT();
 
     jstring strings[64] = {0};
     const char *arguments[64] = {0};
     jsize len = env->GetArrayLength(jarray);
-    if (len >= ARRAYLEN(arguments)) // null-terminated
+    if (len >= ARRAYLEN(arguments))
         die("too many command arguments");
 
     for (jsize i = 0; i < len; ++i) {
@@ -116,4 +120,119 @@ jni_func(void, command, jobjectArray jarray) {
         env->ReleaseStringUTFChars(strings[i], arguments[i]);
         env->DeleteLocalRef(strings[i]);
     }
+}
+
+jni_func(jlong, createAudioNative) {
+    if (!g_mpv) {
+        ALOGE("Cannot create audio MPV before main MPV");
+        return 0;
+    }
+
+    auto *instance = new MPVInstance();
+    instance->mpv = mpv_create();
+    if (!instance->mpv) {
+        delete instance;
+        ALOGE("audio mpv context init failed");
+        return 0;
+    }
+
+    // Fully independent headless audio core. No video decoder or video output.
+    mpv_set_option_string(instance->mpv, "video", "no");
+    mpv_set_option_string(instance->mpv, "vo", "null");
+    mpv_set_option_string(instance->mpv, "audio-display", "no");
+    mpv_set_option_string(instance->mpv, "audio-fallback-to-null", "no");
+    mpv_set_option_string(instance->mpv, "ao", "audiotrack,opensles");
+    mpv_set_option_string(instance->mpv, "audio-client-name", "mpv-android-external-audio");
+    mpv_set_option_string(instance->mpv, "idle", "yes");
+    mpv_set_option_string(instance->mpv, "keep-open", "yes");
+    mpv_request_log_messages(instance->mpv, "terminal-default");
+    mpv_set_option_string(instance->mpv, "msg-level", "all=v");
+
+    return reinterpret_cast<jlong>(instance);
+}
+
+jni_func(jboolean, initAudioNative, jlong instancePtr) {
+    auto *instance = reinterpret_cast<MPVInstance *>(instancePtr);
+    if (!instance || !instance->mpv) {
+        ALOGE("audio mpv is not created");
+        return JNI_FALSE;
+    }
+
+    int err = mpv_initialize(instance->mpv);
+    if (err < 0) {
+        ALOGE("audio mpv init failed: %s", mpv_error_string(err));
+        mpv_terminate_destroy(instance->mpv);
+        instance->mpv = nullptr;
+        delete instance;
+        return JNI_FALSE;
+    }
+
+    instance->event_thread_request_exit = false;
+    if (pthread_create(&instance->event_thread_id, NULL, audio_event_thread, instance) != 0) {
+        ALOGE("audio thread create failed");
+        mpv_terminate_destroy(instance->mpv);
+        instance->mpv = nullptr;
+        delete instance;
+        return JNI_FALSE;
+    }
+    pthread_setname_np(instance->event_thread_id, "audio_event_thread");
+    return JNI_TRUE;
+}
+
+jni_func(void, destroyAudioNative, jlong instancePtr) {
+    auto *instance = reinterpret_cast<MPVInstance *>(instancePtr);
+    if (!instance)
+        return;
+
+    if (instance->mpv) {
+        instance->event_thread_request_exit = true;
+        mpv_wakeup(instance->mpv);
+
+        if (instance->event_thread_id != 0) {
+            pthread_join(instance->event_thread_id, NULL);
+            instance->event_thread_id = 0;
+        }
+
+        mpv_terminate_destroy(instance->mpv);
+        instance->mpv = nullptr;
+    }
+
+    delete instance;
+}
+
+jni_func(void, commandAudioNative, jlong instancePtr, jobjectArray jarray) {
+    auto *instance = reinterpret_cast<MPVInstance *>(instancePtr);
+    if (!instance || !instance->mpv)
+        return;
+
+    jstring strings[64] = {0};
+    const char *arguments[64] = {0};
+    jsize len = env->GetArrayLength(jarray);
+    if (len >= ARRAYLEN(arguments))
+        return;
+
+    for (jsize i = 0; i < len; ++i) {
+        strings[i] = (jstring)env->GetObjectArrayElement(jarray, i);
+        arguments[i] = env->GetStringUTFChars(strings[i], NULL);
+    }
+
+    mpv_command(instance->mpv, arguments);
+
+    for (jsize i = 0; i < len; ++i) {
+        env->ReleaseStringUTFChars(strings[i], arguments[i]);
+        env->DeleteLocalRef(strings[i]);
+    }
+}
+
+jni_func(void, setAudioPropertyDoubleNative, jlong instancePtr, jstring jproperty, jdouble jvalue) {
+    auto *instance = reinterpret_cast<MPVInstance *>(instancePtr);
+    if (!instance || !instance->mpv || !jproperty)
+        return;
+
+    const char *property = env->GetStringUTFChars(jproperty, NULL);
+    double value = static_cast<double>(jvalue);
+    int result = mpv_set_property(instance->mpv, property, MPV_FORMAT_DOUBLE, &value);
+    if (result < 0)
+        ALOGE("external audio mpv_set_property(%s) failed: %s", property, mpv_error_string(result));
+    env->ReleaseStringUTFChars(jproperty, property);
 }

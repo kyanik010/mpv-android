@@ -1,85 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:gravity="center"
-    android:orientation="vertical"
-    android:padding="24dp">
-
-    <ImageView
-        android:id="@+id/logo"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="3"
-        android:contentDescription="@string/mpv_activity"
-        app:srcCompat="@drawable/mpv_logo" />
-
-    <!-- FIXME this could look better -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="2"
-        android:gravity="center"
-        android:orientation="horizontal">
-
-        <Button
-            android:id="@+id/docBtn"
-            style="@style/Widget.AppCompat.Button.Colored"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:drawableTop="@drawable/ic_file_open_48dp"
-            android:text="@string/action_open_doc_tree"
-            android:textColor="@android:color/primary_text_dark" />
-
-        <Button
-            android:id="@+id/urlBtn"
-            style="@style/Widget.AppCompat.Button.Colored"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:drawableTop="@drawable/ic_link_48dp"
-            android:text="@string/action_open_url"
-            android:textColor="@android:color/primary_text_dark" />
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="2"
-        android:gravity="center"
-        android:orientation="horizontal">
-
-        <Button
-            android:id="@+id/filepickerBtn"
-            style="@style/Widget.AppCompat.Button.Colored"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:drawableTop="@drawable/ic_folder_white_48dp"
-            android:text="@string/file_picker_old"
-            android:textColor="@android:color/primary_text_dark" />
-
-        <Button
-            android:id="@+id/settingsBtn"
-            style="@style/Widget.AppCompat.Button.Colored"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:drawableTop="@drawable/ic_settings_black_48dp"
-            android:text="@string/action_settings"
-            android:textColor="@android:color/primary_text_dark" />
-
-    </LinearLayout>
-
-    <androidx.appcompat.widget.SwitchCompat
-        android:id="@+id/switch1"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="16dp"
-        android:text="@string/option_remember_choice"
-        app:showText="false" />
-
-</LinearLayout>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="24dp">
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/xtream_video_source" android:textSize="20sp" android:textStyle="bold"/>
+<EditText android:id="@+id/videoServerUrl" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/xtream_server_url" android:inputType="textUri" android:singleLine="true"/>
+<EditText android:id="@+id/videoUsername" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/xtream_username" android:singleLine="true"/>
+<EditText android:id="@+id/videoPassword" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/xtream_password" android:inputType="textPassword" android:singleLine="true"/>
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="@string/xtream_audio_source" android:textSize="20sp" android:textStyle="bold"/>
+<EditText android:id="@+id/audioServerUrl" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/xtream_audio_server_url" android:inputType="textUri" android:singleLine="true"/>
+<EditText android:id="@+id/audioUsername" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/xtream_audio_username" android:singleLine="true"/>
+<EditText android:id="@+id/audioPassword" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/xtream_audio_password" android:inputType="textPassword" android:singleLine="true"/>
+<androidx.appcompat.widget.SwitchCompat android:id="@+id/rememberLogin" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/xtream_remember_login"/>
+<Button android:id="@+id/loginBtn" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:text="@string/xtream_connect_both"/>
+<ProgressBar android:id="@+id/progress" android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone"/>
+</LinearLayout></ScrollView>

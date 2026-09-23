@@ -4,6 +4,44 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <!-- Simple strings. -->
     <string name="mpv_activity">mpv</string>
+    <string name="xtream_login_title">Xtream Codes Dual Source</string>
+    <string name="xtream_video_source">Video Source — Xtream</string>
+    <string name="xtream_audio_source">Audio Source — separate Xtream account</string>
+    <string name="xtream_audio_server_url">Audio Server URL</string>
+    <string name="xtream_audio_username">Audio Username</string>
+    <string name="xtream_audio_password">Audio Password</string>
+    <string name="xtream_connect_both">Connect Video + Audio</string>
+    <string name="xtream_no_video_channels">No live video channels returned.</string>
+    <string name="xtream_no_audio_channels">No live audio channels returned.</string>
+
+    <string name="xtream_server_url">Server URL</string>
+    <string name="xtream_username">Username</string>
+    <string name="xtream_password">Password</string>
+    <string name="xtream_remember_login">Remember login</string>
+    <string name="xtream_login">Login</string>
+    <string name="xtream_fill_all">Please fill in Server URL, Username and Password.</string>
+    <string name="xtream_invalid_server">Invalid server URL.</string>
+    <string name="xtream_login_success">Xtream login successful.</string>
+    <string name="xtream_login_failed">Xtream login failed.</string>
+    <string name="xtream_credentials_rejected">The server rejected the username or password.</string>
+    <string name="xtream_server_error">The server returned an error.</string>
+    <string name="xtream_connection_failed">Could not connect to the Xtream server.</string>
+    <string name="xtream_no_live_channels">Login succeeded, but no live channels were returned.</string>
+    <string name="xtream_channels_failed">Could not load live channels from the Xtream server.</string>
+    <string name="xtream_select_video">Select video channel</string>
+    <string name="xtream_select_audio">Select audio channel</string>
+    <string name="xtream_search_channel">Search channel</string>
+    <string name="dual_audio_select">Audio Channel</string>
+    <string name="dual_audio_remove">Remove Audio</string>
+    <string name="dual_audio_reconnect">Reconnect Audio</string>
+    <string name="dual_audio_sync_minus">Sync −0.25s</string>
+    <string name="dual_audio_sync_plus">Sync +0.25s</string>
+    <string name="dual_audio_connected">External audio connected</string>
+    <string name="dual_audio_removed">External audio removed</string>
+    <string name="dual_audio_unavailable">No external audio source</string>
+    <string name="dual_audio_sync_value">Audio delay: %.2fs</string>
+
+
     <string name="label_share_intent">Play in mpv</string>
     <string name="title_activity_settings">Settings</string>
     <string name="dialog_ok">OK</string>
@@ -58,6 +96,7 @@
     <!-- Action buttons -->
     <string name="switch_orientation">Switch orientation</string>
     <string name="open_external_audio">Open external audio…</string>
+    <string name="open_external_audio_url">Open external audio URL…</string>
     <string name="open_external_sub">Open external subtitle…</string>
     <string name="advanced_menu">Advanced…</string>
     <string name="resume_bg_playback">Play in background</string>

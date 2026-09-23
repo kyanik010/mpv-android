@@ -31,6 +31,16 @@
     <string name="xtream_select_video">Select video channel</string>
     <string name="xtream_select_audio">Select audio channel</string>
     <string name="xtream_search_channel">Search channel</string>
+    <string name="dual_audio_select">Audio Channel</string>
+    <string name="dual_audio_remove">Remove Audio</string>
+    <string name="dual_audio_reconnect">Reconnect Audio</string>
+    <string name="dual_audio_sync_minus">Sync −0.25s</string>
+    <string name="dual_audio_sync_plus">Sync +0.25s</string>
+    <string name="dual_audio_connected">External audio connected</string>
+    <string name="dual_audio_removed">External audio removed</string>
+    <string name="dual_audio_unavailable">No external audio source</string>
+    <string name="dual_audio_sync_value">Audio delay: %.2fs</string>
+
 
     <string name="label_share_intent">Play in mpv</string>
     <string name="title_activity_settings">Settings</string>

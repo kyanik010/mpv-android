@@ -1,80 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:padding="28dp">
-
-        <ImageView
-            android:id="@+id/logo"
-            android:layout_width="180dp"
-            android:layout_height="120dp"
-            android:contentDescription="@string/mpv_activity"
-            android:scaleType="centerInside"
-            android:src="@drawable/mpv_logo" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:paddingBottom="20dp"
-            android:text="@string/xtream_login_title"
-            android:textSize="24sp"
-            android:textStyle="bold" />
-
-        <EditText
-            android:id="@+id/serverUrl"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/xtream_server_url"
-            android:inputType="textUri"
-            android:maxLines="1"
-            android:singleLine="true" />
-
-        <EditText
-            android:id="@+id/username"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/xtream_username"
-            android:inputType="text"
-            android:maxLines="1"
-            android:singleLine="true" />
-
-        <EditText
-            android:id="@+id/password"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/xtream_password"
-            android:inputType="textPassword"
-            android:maxLines="1"
-            android:singleLine="true" />
-
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/rememberLogin"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/xtream_remember_login" />
-
-        <Button
-            android:id="@+id/loginBtn"
-            style="@style/Widget.AppCompat.Button.Colored"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="@string/xtream_login" />
-
-        <ProgressBar
-            android:id="@+id/progress"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:visibility="gone" />
-
-    </LinearLayout>
-</ScrollView>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="24dp">
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/xtream_video_source" android:textSize="20sp" android:textStyle="bold"/>
+<EditText android:id="@+id/videoServerUrl" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/xtream_server_url" android:inputType="textUri" android:singleLine="true"/>
+<EditText android:id="@+id/videoUsername" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/xtream_username" android:singleLine="true"/>
+<EditText android:id="@+id/videoPassword" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/xtream_password" android:inputType="textPassword" android:singleLine="true"/>
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="@string/xtream_audio_source" android:textSize="20sp" android:textStyle="bold"/>
+<EditText android:id="@+id/audioServerUrl" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/xtream_audio_server_url" android:inputType="textUri" android:singleLine="true"/>
+<EditText android:id="@+id/audioUsername" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/xtream_audio_username" android:singleLine="true"/>
+<EditText android:id="@+id/audioPassword" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/xtream_audio_password" android:inputType="textPassword" android:singleLine="true"/>
+<androidx.appcompat.widget.SwitchCompat android:id="@+id/rememberLogin" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/xtream_remember_login"/>
+<Button android:id="@+id/loginBtn" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:text="@string/xtream_connect_both"/>
+<ProgressBar android:id="@+id/progress" android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone"/>
+</LinearLayout></ScrollView>
